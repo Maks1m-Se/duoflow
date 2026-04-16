@@ -23,8 +23,8 @@ def init_db():
             duration INTEGER DEFAULT 25
         );
 
-        INSERT OR IGNORE INTO pomodoro (user) VALUES ('max');
-        INSERT OR IGNORE INTO pomodoro (user) VALUES ('gf');
+        INSERT OR IGNORE INTO pomodoro (user) VALUES ('user1');
+        INSERT OR IGNORE INTO pomodoro (user) VALUES ('user2');
     """)
     conn.commit()
     conn.close()

@@ -4,98 +4,267 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DuoFlow</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.2/confetti.browser.min.js"></script>
   <style>
+    :root {
+      --bg: #0f0f1a;
+      --card: #1a1a2e;
+      --card2: #16213e;
+      --accent: #e8775a;
+      --accent2: #7c6af7;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --done: #3d3d5c;
+      --radius: 16px;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      color: #333;
-      padding: 20px;
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 20px;
     }
 
     h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
       text-align: center;
-      margin-bottom: 24px;
-      font-size: 2rem;
-      color: #4f46e5;
+      font-size: 2.4rem;
+      letter-spacing: -1px;
+      margin-bottom: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .sound-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--card);
+      border: 1px solid #2a2a4a;
+      color: var(--text);
+      border-radius: 99px;
+      padding: 8px 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+      z-index: 100;
     }
 
     .container {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
     .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px;
+      border: 1px solid #2a2a4a;
     }
 
-    .card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 16px;
-      color: #4f46e5;
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
-    /* Pomodoro */
-    .pomodoro-status {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 8px;
+    .card-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .task-count {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: #2a2a4a;
+      padding: 4px 10px;
+      border-radius: 99px;
+    }
+
+    /* Progress bar (tasks) */
+    .task-progress {
+      margin-bottom: 20px;
+    }
+
+    .task-progress-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .progress-bar {
-      background: #e5e7eb;
+      background: #2a2a4a;
       border-radius: 99px;
-      height: 12px;
-      margin-bottom: 12px;
+      height: 6px;
       overflow: hidden;
     }
 
     .progress-fill {
       height: 100%;
-      background: #4f46e5;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
       border-radius: 99px;
       transition: width 0.5s ease;
+    }
+
+    /* Pomodoro */
+    .pomodoro-section {
+      margin-bottom: 20px;
+      background: var(--card2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .pomodoro-toggle {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .pomodoro-toggle .arrow {
+      transition: transform 0.3s;
+      color: var(--muted);
+    }
+
+    .pomodoro-toggle.open .arrow { transform: rotate(180deg); }
+
+    .pomodoro-body {
+      display: none;
+      padding: 16px;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pomodoro-body.open { display: flex; }
+
+    /* Circular timer */
+    .timer-ring {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+
+    .timer-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .timer-ring .bg-circle {
+      fill: none;
+      stroke: #2a2a4a;
+      stroke-width: 8;
+    }
+
+    .timer-ring .progress-circle {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .timer-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .timer-time {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .timer-label {
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 4px;
     }
 
     .pomodoro-buttons {
       display: flex;
       gap: 8px;
-      margin-bottom: 20px;
     }
 
-    button {
-      padding: 8px 14px;
+    button.btn-start {
+      background: var(--accent);
+      color: white;
       border: none;
       border-radius: 8px;
+      padding: 8px 18px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 500;
       cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
     }
 
-    .btn-start { background: #4f46e5; color: white; }
-    .btn-stop  { background: #ef4444; color: white; }
-    .btn-add   { background: #10b981; color: white; }
+    button.btn-stop {
+      background: #2a2a4a;
+      color: var(--muted);
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
 
     /* Tasks */
     .task-input {
       display: flex;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .task-input input {
       flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #d1d5db;
+      background: #2a2a4a;
+      border: 1px solid #3a3a5a;
       border-radius: 8px;
-      font-size: 0.9rem;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .task-input input:focus { border-color: var(--accent2); }
+
+    button.btn-add {
+      background: var(--accent2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: 1.1rem;
+      cursor: pointer;
     }
 
     .task-list { list-style: none; }
@@ -104,134 +273,438 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid #f3f4f6;
+      padding: 9px 0;
+      border-bottom: 1px solid #2a2a4a;
+      animation: fadeIn 0.2s ease;
     }
 
-    .task-item input[type="checkbox"] { cursor: pointer; width: 16px; height: 16px; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-item:last-child { border-bottom: none; }
+
+    .task-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
 
     .task-item span {
       flex: 1;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      transition: color 0.2s;
     }
 
     .task-item.done span {
       text-decoration: line-through;
-      color: #9ca3af;
+      color: var(--muted);
     }
 
-    .btn-delete {
+    button.btn-delete {
       background: none;
-      color: #9ca3af;
-      font-size: 1rem;
-      padding: 0 4px;
+      border: none;
+      color: #3a3a5a;
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
     }
 
-    .btn-delete:hover { color: #ef4444; }
+    button.btn-delete:hover { color: var(--accent); background: #2a2a4a; }
+
+    /* Celebration modal */
+    .celebration {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .celebration.show { display: flex; }
+
+    .celebration-box {
+      background: var(--card);
+      border: 1px solid var(--accent);
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      max-width: 360px;
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .celebration-box .emoji { font-size: 4rem; margin-bottom: 16px; }
+
+    .celebration-box h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .celebration-box p {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+    }
+
+    .celebration-box button {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      border-radius: 99px;
+      padding: 12px 28px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      .container { grid-template-columns: 1fr; }
+      h1 { font-size: 1.8rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>🌊 DuoFlow</h1>
-  <div class="container">
-    <div id="card-max" class="card"></div>
-    <div id="card-gf" class="card"></div>
+
+<button class="sound-toggle" onclick="toggleSound()" id="soundBtn">🔔 Sound: AN</button>
+
+<h1>DuoFlow</h1>
+
+<div class="container">
+  <div id="card-user1" class="card"></div>
+  <div id="card-user2" class="card"></div>
+</div>
+
+<!-- Celebration Modal -->
+<div class="celebration" id="celebration" onclick="closeCelebration()">
+  <div class="celebration-box" onclick="event.stopPropagation()">
+    <div class="emoji">🏆</div>
+    <h2 id="celebration-title">Alles erledigt!</h2>
+    <p id="celebration-msg">Unglaublich produktiv heute!</p>
+    <button onclick="closeCelebration()">Weiter so! 💪</button>
   </div>
+</div>
 
-  <script>
+<script>
     const API = "http://127.0.0.1:8000";
-    const USERS = { max: "Maksim", gf: "Freundin" };
+const USERS = { user1: "Maksim", user2: "Freundin" };
+let soundEnabled = true;
+let timerOpen = { user1: true, user2: true };
+let allowCelebration = { user1: true, user2: true };
+let lastPomodoro = {};
+let lastTasks = [];
 
-    async function fetchTasks() {
-      const res = await fetch(`${API}/tasks`);
-      return res.json();
+// ── Audio ──────────────────────────────────────────────
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTick() {
+  if (!soundEnabled) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.frequency.value = 880;
+  g.gain.setValueAtTime(0.15, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+  o.start(); o.stop(ctx.currentTime + 0.15);
+}
+
+function playBell() {
+  if (!soundEnabled) return;
+  [523, 659, 784].forEach((freq, i) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+    g.gain.linearRampToValueAtTime(0.2, ctx.currentTime + i * 0.15 + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.5);
+    o.start(ctx.currentTime + i * 0.15);
+    o.stop(ctx.currentTime + i * 0.15 + 0.5);
+  });
+}
+
+function playFanfare() {
+  if (!soundEnabled) return;
+  const notes = [523, 659, 784, 1047];
+  notes.forEach((freq, i) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'triangle';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.12);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+    o.start(ctx.currentTime + i * 0.12);
+    o.stop(ctx.currentTime + i * 0.12 + 0.4);
+  });
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundBtn').textContent = `🔔 Sound: ${soundEnabled ? 'AN' : 'AUS'}`;
+}
+
+// ── Konfetti ───────────────────────────────────────────
+function fireConfetti() {
+  if (typeof confetti === 'undefined') return;
+  confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#e8775a','#7c6af7','#f0c040','#4fd1c5'] });
+}
+
+function fireFireworks() {
+  if (typeof confetti === 'undefined') return;
+  const end = Date.now() + 3000;
+  const colors = ['#e8775a','#7c6af7','#f0c040','#4fd1c5','#f472b6'];
+  (function frame() {
+    confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors });
+    confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+// ── Celebration ────────────────────────────────────────
+const messages = [
+  ["Alles erledigt! 🏆", "Du bist heute nicht aufzuhalten!"],
+  ["Produktivitäts-Gott! 🚀", "Alle Tasks vernichtet. Respekt."],
+  ["Mission Complete! ✅", "Heute war dein Tag. Gut gemacht!"],
+];
+
+function showCelebration(user) {
+  const [title, msg] = messages[Math.floor(Math.random() * messages.length)];
+  document.getElementById('celebration-title').textContent = title;
+  document.getElementById('celebration-msg').textContent = `${USERS[user]}: ${msg}`;
+  document.getElementById('celebration').classList.add('show');
+  fireFireworks();
+  playFanfare();
+}
+
+function closeCelebration() {
+  document.getElementById('celebration').classList.remove('show');
+}
+
+// ── Timer Ring (läuft lokal, flüssig) ─────────────────
+function buildTimerRing(user, p) {
+  const r = 60;
+  const circ = 2 * Math.PI * r;
+  let timeLeft = p.duration * 60;
+  let offset = circ;
+
+  if (p.status === 'running' && p.started_at) {
+    const elapsed = (Date.now() - new Date(p.started_at).getTime()) / 1000;
+    timeLeft = Math.max(p.duration * 60 - elapsed, 0);
+    offset = circ * (elapsed / (p.duration * 60));
+    offset = Math.min(offset, circ);
+  }
+
+  const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+  const secs = Math.floor(timeLeft % 60).toString().padStart(2, '0');
+  const label = p.status === 'running' ? 'läuft' : 'pause';
+
+  return `
+    <div class="timer-ring">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle class="bg-circle" cx="70" cy="70" r="${r}"/>
+        <circle class="progress-circle" cx="70" cy="70" r="${r}"
+          stroke-dasharray="${circ}"
+          stroke-dashoffset="${offset}"
+          style="transition: stroke-dashoffset 1s linear;"
+        />
+      </svg>
+      <div class="timer-display">
+        <div class="timer-time">${mins}:${secs}</div>
+        <div class="timer-label">${label}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Nur Timer neu zeichnen (ohne API-Call) ─────────────
+function tickTimers() {
+  ['user1', 'user2'].forEach(user => {
+    const p = lastPomodoro[user];
+    if (!p) return;
+    const ring = document.querySelector(`#card-${user} .timer-ring`);
+    if (!ring) return;
+    const r = 60;
+    const circ = 2 * Math.PI * r;
+    let timeLeft = p.duration * 60;
+    let offset = circ;
+
+    if (p.status === 'running' && p.started_at) {
+      const elapsed = (Date.now() - new Date(p.started_at).getTime()) / 1000;
+      timeLeft = Math.max(p.duration * 60 - elapsed, 0);
+      offset = Math.min(circ * (elapsed / (p.duration * 60)), circ);
     }
 
-    async function fetchPomodoro() {
-      const res = await fetch(`${API}/pomodoro`);
-      return res.json();
-    }
+    const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    const secs = Math.floor(timeLeft % 60).toString().padStart(2, '0');
+    const label = p.status === 'running' ? 'läuft' : 'pause';
 
-    async function addTask(user, title) {
-      await fetch(`${API}/tasks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, title })
-      });
-    }
+    const circle = ring.querySelector('.progress-circle');
+    const timeEl = ring.querySelector('.timer-time');
+    const labelEl = ring.querySelector('.timer-label');
 
-    async function toggleTask(id) {
-      await fetch(`${API}/tasks/${id}/done`, { method: "PATCH" });
-    }
+    if (circle) circle.style.strokeDashoffset = offset;
+    if (timeEl) timeEl.textContent = `${mins}:${secs}`;
+    if (labelEl) labelEl.textContent = label;
+  });
+}
 
-    async function deleteTask(id) {
-      await fetch(`${API}/tasks/${id}`, { method: "DELETE" });
-    }
+// ── Render ─────────────────────────────────────────────
+function renderCard(user, label, tasks, pomodoro) {
+  const p = pomodoro[user];
+  const userTasks = tasks.filter(t => t.user === user);
+  const doneCount = userTasks.filter(t => t.done).length;
+  const total = userTasks.length;
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const isOpen = timerOpen[user];
 
-    async function startPomodoro(user) {
-      await fetch(`${API}/pomodoro/${user}/start`, { method: "POST" });
-    }
+  document.getElementById(`card-${user}`).innerHTML = `
+    <div class="card-header">
+      <h2>${label}</h2>
+      <span class="task-count">${doneCount}/${total} erledigt</span>
+    </div>
 
-    async function stopPomodoro(user) {
-      await fetch(`${API}/pomodoro/${user}/stop`, { method: "POST" });
-    }
+    <div class="task-progress">
+      <div class="task-progress-label">Fortschritt</div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${pct}%"></div>
+      </div>
+    </div>
 
-    function renderCard(user, label, tasks, pomodoro) {
-      const p = pomodoro[user];
-      const userTasks = tasks.filter(t => t.user === user);
-      const done = userTasks.filter(t => t.done).length;
-      const total = userTasks.length;
-
-      document.getElementById(`card-${user}`).innerHTML = `
-        <h2>${label} ${total > 0 ? `(${done}/${total})` : ""}</h2>
-
-        <div class="pomodoro-status">
-          🍅 Pomodoro: <strong>${p.status === "running" ? `läuft — ${p.progress}%` : "pausiert"}</strong>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${p.progress}%"></div>
-        </div>
+    <div class="pomodoro-section">
+      <button class="pomodoro-toggle ${isOpen ? 'open' : ''}"
+        onclick="timerOpen['${user}'] = !timerOpen['${user}']; renderCard('${user}', '${label}', lastTasks, lastPomodoro)">
+        🍅 POMODORO
+        <span class="arrow">▾</span>
+      </button>
+      <div class="pomodoro-body ${isOpen ? 'open' : ''}">
+        ${buildTimerRing(user, p)}
         <div class="pomodoro-buttons">
           <button class="btn-start" onclick="startPomodoro('${user}').then(refresh)">▶ Start</button>
           <button class="btn-stop" onclick="stopPomodoro('${user}').then(refresh)">⏹ Stop</button>
         </div>
+      </div>
+    </div>
 
-        <div class="task-input">
-          <input type="text" id="input-${user}" placeholder="Neue Aufgabe..." 
-            onkeydown="if(event.key==='Enter') addTaskAndRefresh('${user}')">
-          <button class="btn-add" onclick="addTaskAndRefresh('${user}')">+</button>
-        </div>
+    <div class="task-input">
+      <input type="text" id="input-${user}" placeholder="Neue Aufgabe..."
+        onkeydown="if(event.key==='Enter') addTaskAndRefresh('${user}')">
+      <button class="btn-add" onclick="addTaskAndRefresh('${user}')">+</button>
+    </div>
 
-        <ul class="task-list">
-          ${userTasks.map(t => `
-            <li class="task-item ${t.done ? 'done' : ''}">
-              <input type="checkbox" ${t.done ? 'checked' : ''} 
-                onchange="toggleTask(${t.id}).then(refresh)">
-              <span>${t.title}</span>
-              <button class="btn-delete" onclick="deleteTask(${t.id}).then(refresh)">✕</button>
-            </li>
-          `).join("")}
-        </ul>
-      `;
+    <ul class="task-list">
+      ${userTasks.map(t => `
+        <li class="task-item ${t.done ? 'done' : ''}">
+          <input type="checkbox" class="task-checkbox" ${t.done ? 'checked' : ''}
+            onchange="onToggle(${t.id}, ${t.done}, '${user}')">
+          <span>${t.title}</span>
+          <button class="btn-delete" onclick="deleteTask(${t.id}).then(refresh)">✕</button>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+// ── API calls ──────────────────────────────────────────
+async function fetchTasks() { return (await fetch(`${API}/tasks`)).json(); }
+async function fetchPomodoro() { return (await fetch(`${API}/pomodoro`)).json(); }
+async function addTask(user, title) {
+  await fetch(`${API}/tasks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user, title })
+  });
+}
+async function toggleTask(id) { await fetch(`${API}/tasks/${id}/done`, { method: "PATCH" }); }
+async function deleteTask(id) { await fetch(`${API}/tasks/${id}`, { method: "DELETE" }); }
+async function startPomodoro(user) { await fetch(`${API}/pomodoro/${user}/start`, { method: "POST" }); }
+async function stopPomodoro(user) { await fetch(`${API}/pomodoro/${user}/stop`, { method: "POST" }); }
+
+async function onToggle(id, wasDone, user) {
+  ctx.resume();
+  await toggleTask(id);
+
+  if (!wasDone) {
+   fireConfetti();
+   playTick();
+ } else {
+   allowCelebration[user] = true; // Task entcheckt → Celebration wieder erlaubt
+ }
+
+  const freshTasks = await fetchTasks();
+  lastTasks = freshTasks;
+  lastPomodoro = await fetchPomodoro();
+
+  const userTasks = freshTasks.filter(t => t.user === user);
+
+  renderCard('user1', USERS['user1'], freshTasks, lastPomodoro);
+  renderCard('user2', USERS['user2'], freshTasks, lastPomodoro);
+
+  if (!wasDone) {
+    const allDone = userTasks.length > 0 && userTasks.every(t => t.done);
+    if (allDone && allowCelebration[user]) {
+      allowCelebration[user] = false;
+      showCelebration(user);
     }
+  }
+}
 
-    async function addTaskAndRefresh(user) {
-      const input = document.getElementById(`input-${user}`);
-      const title = input.value.trim();
-      if (!title) return;
-      await addTask(user, title);
-      input.value = "";
-      refresh();
-    }
+async function addTaskAndRefresh(user) {
+  const input = document.getElementById(`input-${user}`);
+  const title = input.value.trim();
+  if (!title) return;
+  await addTask(user, title);
+  allowCelebration[user] = true; // neuer Task → Celebration wieder erlaubt
+  input.value = "";
+  await refresh();
+}
 
-    async function refresh() {
-      const [tasks, pomodoro] = await Promise.all([fetchTasks(), fetchPomodoro()]);
-      renderCard("max", USERS.max, tasks, pomodoro);
-      renderCard("gf", USERS.gf, tasks, pomodoro);
-    }
+let isRefreshing = false;
+let firstLoad = true;
 
-    // Erste Laden + alle 4 Sekunden aktualisieren
-    refresh();
-    setInterval(refresh, 4000);
-  </script>
+async function refresh() {
+  if (isRefreshing) return;
+  isRefreshing = true;
+  try {
+    const [tasks, pomodoro] = await Promise.all([fetchTasks(), fetchPomodoro()]);
+
+    ['user1', 'user2'].forEach(user => {
+      const userTasks = tasks.filter(t => t.user === user);
+      const prevUserTasks = lastTasks.filter(t => t.user === user);
+      const changed = firstLoad || JSON.stringify(userTasks) !== JSON.stringify(prevUserTasks);
+
+      if (changed) {
+        renderCard(user, USERS[user], tasks, pomodoro);
+      }
+    });
+
+    lastTasks = tasks;
+    lastPomodoro = pomodoro;
+    firstLoad = false;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+// Server-Poll alle 4 Sek, Timer-Tick jede Sekunde
+refresh();
+setInterval(refresh, 4000);
+setInterval(tickTimers, 1000);
+</script>
 </body>
 </html>
