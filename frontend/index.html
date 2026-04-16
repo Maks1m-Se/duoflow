@@ -404,6 +404,7 @@
 const USERS = { user1: "Maksim", user2: "Freundin" };
 let soundEnabled = true;
 let timerOpen = { user1: true, user2: true };
+let timerFinished = { user1: false, user2: false };
 let allowCelebration = { user1: true, user2: true };
 let lastPomodoro = {};
 let lastTasks = [];
@@ -548,6 +549,14 @@ function tickTimers() {
       const elapsed = (Date.now() - new Date(p.started_at).getTime()) / 1000;
       timeLeft = Math.max(p.duration * 60 - elapsed, 0);
       offset = Math.min(circ * (elapsed / (p.duration * 60)), circ);
+
+      // Bell wenn Timer ausläuft
+      if (timeLeft === 0 && !timerFinished[user]) {
+        timerFinished[user] = true;
+        playBell();
+      } else if (timeLeft > 0) {
+        timerFinished[user] = false;
+      }
     }
 
     const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
