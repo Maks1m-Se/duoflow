@@ -3,7 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
 from backend.tasks import router as tasks_router
-from backend.pomodoro import router as pomodoro_router  # NEU
+from backend.pomodoro import router as pomodoro_router
+from fastapi.staticfiles import StaticFiles
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,8 +21,6 @@ app.add_middleware(
 )
 
 app.include_router(tasks_router)
-app.include_router(pomodoro_router)  # NEU
+app.include_router(pomodoro_router)
 
-@app.get("/")
-def root():
-    return {"status": "DuoFlow läuft!"}
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
