@@ -1,0 +1,16 @@
+# Python
+backend/venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Datenbank (lokal, nicht ins Repo)
+*.db
+
+# VSCode
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini
