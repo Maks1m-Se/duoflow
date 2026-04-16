@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from backend.database import get_db
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ def get_pomodoro():
         user = row["user"]
         progress = 0
         if row["status"] == "running" and row["started_at"]:
-            elapsed = (datetime.utcnow() - datetime.fromisoformat(row["started_at"])).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(row["started_at"])).total_seconds()
             total = row["duration"] * 60
             progress = min(int((elapsed / total) * 100), 100)
         row["progress"] = progress
@@ -27,7 +27,7 @@ def start_pomodoro(user: str, duration: int = 25):
     conn = get_db()
     conn.execute(
         "UPDATE pomodoro SET status = 'running', started_at = ?, duration = ? WHERE user = ?",
-        (datetime.utcnow().isoformat(), duration, user)
+        (datetime.now(timezone.utc).isoformat(), duration, user)
     )
     conn.commit()
     conn.close()
