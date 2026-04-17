@@ -18,13 +18,26 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS pomodoro (
             user TEXT PRIMARY KEY,
+            display_name TEXT,
             status TEXT DEFAULT 'idle',
             started_at TEXT,
-            duration INTEGER DEFAULT 25
+            pause_elapsed INTEGER DEFAULT 0,
+            duration INTEGER DEFAULT 25,
+            completed_count INTEGER DEFAULT 0
         );
 
-        INSERT OR IGNORE INTO pomodoro (user) VALUES ('user1');
-        INSERT OR IGNORE INTO pomodoro (user) VALUES ('user2');
+        INSERT OR IGNORE INTO pomodoro (user, display_name) VALUES ('user1', 'Maksim');
+        INSERT OR IGNORE INTO pomodoro (user, display_name) VALUES ('user2', 'Freundin');
     """)
+    # Neue Spalten hinzufügen falls DB schon existiert
+    try:
+        conn.execute("ALTER TABLE pomodoro ADD COLUMN display_name TEXT")
+    except: pass
+    try:
+        conn.execute("ALTER TABLE pomodoro ADD COLUMN pause_elapsed INTEGER DEFAULT 0")
+    except: pass
+    try:
+        conn.execute("ALTER TABLE pomodoro ADD COLUMN completed_count INTEGER DEFAULT 0")
+    except: pass
     conn.commit()
     conn.close()

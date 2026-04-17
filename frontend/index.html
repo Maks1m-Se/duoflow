@@ -376,6 +376,39 @@
       .container { grid-template-columns: 1fr; }
       h1 { font-size: 1.8rem; }
     }
+
+    button.btn-pause {
+      background: #f0a500;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .pomodoro-tomatoes {
+      font-size: 1.2rem;
+      letter-spacing: 2px;
+      min-height: 1.5rem;
+    }
+
+    button.btn-reset-tomatoes {
+      background: none;
+      border: none;
+      color: #3a3a5a;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0 4px;
+      vertical-align: middle;
+      opacity: 0.5;
+    }
+
+    button.btn-reset-tomatoes:hover {
+      color: var(--accent);
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -400,7 +433,7 @@
 </div>
 
 <script>
-    const API = "";
+    const API = ""; //const API = "http://127.0.0.1:8000"; //const API = "";
 const USERS = { user1: "Maksim", user2: "Freundin" };
 let soundEnabled = true;
 let timerOpen = { user1: true, user2: true };
@@ -419,6 +452,30 @@ function playTick() {
   o.connect(g); g.connect(ctx.destination);
   o.frequency.value = 880;
   g.gain.setValueAtTime(0.15, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+  o.start(); o.stop(ctx.currentTime + 0.15);
+}
+
+function playMinuteWarning() {
+  if (!soundEnabled) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = 'sine';
+  o.frequency.value = 440;
+  g.gain.setValueAtTime(0.08, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+  o.start(); o.stop(ctx.currentTime + 0.3);
+}
+
+function playCountdown() {
+  if (!soundEnabled) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = 'sine';
+  o.frequency.value = 600;
+  g.gain.setValueAtTime(0.1, ctx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
   o.start(); o.stop(ctx.currentTime + 0.15);
 }
@@ -504,8 +561,11 @@ function buildTimerRing(user, p) {
   let timeLeft = p.duration * 60;
   let offset = circ;
 
-  if (p.status === 'running' && p.started_at) {
-    const elapsed = (Date.now() - new Date(p.started_at).getTime()) / 1000;
+  if ((p.status === 'running' || p.status === 'paused') && (p.started_at || p.pause_elapsed)) {
+    const sinceStart = p.status === 'running' && p.started_at
+      ? (Date.now() - new Date(p.started_at).getTime()) / 1000
+      : 0;
+    const elapsed = sinceStart + (p.pause_elapsed || 0);
     timeLeft = Math.max(p.duration * 60 - elapsed, 0);
     offset = circ * (elapsed / (p.duration * 60));
     offset = Math.min(offset, circ);
@@ -545,8 +605,11 @@ function tickTimers() {
     let timeLeft = p.duration * 60;
     let offset = circ;
 
-    if (p.status === 'running' && p.started_at) {
-      const elapsed = (Date.now() - new Date(p.started_at).getTime()) / 1000;
+    if ((p.status === 'running' || p.status === 'paused') && (p.started_at || p.pause_elapsed)) {
+      const sinceStart = p.status === 'running' && p.started_at
+        ? (Date.now() - new Date(p.started_at).getTime()) / 1000
+        : 0;
+      const elapsed = sinceStart + (p.pause_elapsed || 0);
       timeLeft = Math.max(p.duration * 60 - elapsed, 0);
       offset = Math.min(circ * (elapsed / (p.duration * 60)), circ);
 
@@ -554,8 +617,19 @@ function tickTimers() {
       if (timeLeft === 0 && !timerFinished[user]) {
         timerFinished[user] = true;
         playBell();
+        completePomodoro(user).then(refresh);
       } else if (timeLeft > 0) {
         timerFinished[user] = false;
+        
+        // Sanfter Ton bei 1 Minute
+        if (Math.floor(timeLeft) === 60) {
+          playMinuteWarning();
+        }
+        
+        // Countdown bei 3, 2, 1
+        if (Math.floor(timeLeft) <= 3 && Math.floor(timeLeft) > 0) {
+          playCountdown();
+        }
       }
     }
 
@@ -584,7 +658,9 @@ function renderCard(user, label, tasks, pomodoro) {
 
   document.getElementById(`card-${user}`).innerHTML = `
     <div class="card-header">
-      <h2>${label}</h2>
+      <h2 onclick="editName('${user}')" style="cursor:pointer" title="Namen ändern">
+        <span id="name-${user}">${label}</span>
+      </h2>
       <span class="task-count">${doneCount}/${total} erledigt</span>
     </div>
 
@@ -604,8 +680,17 @@ function renderCard(user, label, tasks, pomodoro) {
       <div class="pomodoro-body ${isOpen ? 'open' : ''}">
         ${buildTimerRing(user, p)}
         <div class="pomodoro-buttons">
-          <button class="btn-start" onclick="startPomodoro('${user}').then(refresh)">▶ Start</button>
-          <button class="btn-stop" onclick="stopPomodoro('${user}').then(refresh)">⏹ Stop</button>
+          <button class="btn-start" onclick="handleTimerBtn('${user}')">
+            ${p.status === 'running' ? '⏸ Pause' : p.status === 'paused' ? '▶ Weiter' : '▶ Start'}
+          </button>
+          <button class="btn-stop" onclick="stopPomodoro('${user}').then(refresh)">↺ Reset</button>
+        </div>
+        <div class="pomodoro-tomatoes">
+          ${'🍅'.repeat(p.completed_count || 0)}
+          ${(p.completed_count || 0) > 0 
+            ? `<button class="btn-reset-tomatoes" onclick="resetTomatoes('${user}')" title="Tomaten zurücksetzen">✕</button>`
+            : ''
+          }
         </div>
       </div>
     </div>
@@ -643,6 +728,16 @@ async function toggleTask(id) { await fetch(`${API}/tasks/${id}/done`, { method:
 async function deleteTask(id) { await fetch(`${API}/tasks/${id}`, { method: "DELETE" }); }
 async function startPomodoro(user) { await fetch(`${API}/pomodoro/${user}/start`, { method: "POST" }); }
 async function stopPomodoro(user) { await fetch(`${API}/pomodoro/${user}/stop`, { method: "POST" }); }
+async function pausePomodoro(user) { await fetch(`${API}/pomodoro/${user}/pause`, { method: "POST" }); }
+async function resumePomodoro(user) { await fetch(`${API}/pomodoro/${user}/resume`, { method: "POST" }); }
+async function completePomodoro(user) { await fetch(`${API}/pomodoro/${user}/complete`, { method: "POST" }); }
+async function updateName(user, name) {
+  await fetch(`${API}/pomodoro/${user}/name`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ display_name: name })
+  });
+}
 
 async function onToggle(id, wasDone, user) {
   ctx.resume();
@@ -683,6 +778,29 @@ async function addTaskAndRefresh(user) {
   await refresh();
 }
 
+async function editName(user) {
+  const current = document.getElementById(`name-${user}`).textContent;
+  const newName = prompt("Namen ändern:", current);
+  if (newName && newName.trim() && newName.trim() !== current) {
+    await updateName(user, newName.trim());
+    USERS[user] = newName.trim();
+    renderCard(user, newName.trim(), lastTasks, lastPomodoro);
+  }
+}
+
+async function handleTimerBtn(user) {
+  if (lastPomodoro[user].status === 'running') {
+    await pausePomodoro(user);
+  } else if (lastPomodoro[user].status === 'paused') {
+    await resumePomodoro(user);
+  } else {
+    await startPomodoro(user);
+  }
+  isRefreshing = false;
+  await refresh();
+}
+
+
 let isRefreshing = false;
 let firstLoad = true;
 
@@ -695,7 +813,9 @@ async function refresh() {
     ['user1', 'user2'].forEach(user => {
       const userTasks = tasks.filter(t => t.user === user);
       const prevUserTasks = lastTasks.filter(t => t.user === user);
-      const changed = firstLoad || JSON.stringify(userTasks) !== JSON.stringify(prevUserTasks);
+      const tasksChanged = JSON.stringify(userTasks) !== JSON.stringify(prevUserTasks);
+      const pomodoroChanged = JSON.stringify(pomodoro[user]) !== JSON.stringify(lastPomodoro[user]);
+      const changed = firstLoad || tasksChanged || pomodoroChanged;
 
       if (changed) {
         renderCard(user, USERS[user], tasks, pomodoro);
@@ -708,6 +828,11 @@ async function refresh() {
   } finally {
     isRefreshing = false;
   }
+}
+
+async function resetTomatoes(user) {
+  await fetch(`${API}/pomodoro/${user}/reset-tomatoes`, { method: "POST" });
+  await refresh();
 }
 
 // Server-Poll alle 4 Sek, Timer-Tick jede Sekunde
